@@ -1,25 +1,26 @@
+# UV + Ruff — Python 3.15+ Development Cheat Sheet
 
-# UV + Ruff — Python Development Cheat Sheet
+A practical reference for modern Python development using **uv** for Python version, environment, and dependency management; **Ruff** for linting and formatting; and **pytest** for automated testing.
 
-A practical reference for Python development using **uv** for environment and dependency management, **Ruff** for linting and formatting, and **pytest** for automated testing.
+> **Compatibility note:** Python 3.15 support depends on the selected Python release, uv version, Ruff version, and third-party dependencies. Verify compatibility before using Python 3.15 in production. For prerelease Python versions, expect some packages to require newer releases or source builds.
 
 ## Table of Contents
 
 - [1. Installation](#1-installation)
-- [2. Create a New Project](#2-create-a-new-project)
+- [2. Create a Python 3.15+ Project](#2-create-a-python-315-project)
 - [3. Essential Daily Commands](#3-essential-daily-commands)
 - [4. Ruff Configuration](#4-ruff-configuration)
 - [5. Standard Development Workflow](#5-standard-development-workflow)
 - [6. CI/CD Validation](#6-cicd-validation)
 - [7. Git Practices](#7-git-practices)
-- [8. Core Development Rules](#8-core-development-rules)
+- [8. Python 3.15+ Compatibility Practices](#8-python-315-compatibility-practices)
 - [9. Official Documentation](#9-official-documentation)
 
 ---
 
 ## 1. Installation
 
-Install `uv` on Ubuntu/Linux:
+Install uv on Ubuntu/Linux:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -29,33 +30,70 @@ Verify the installation:
 
 ```bash
 uv --version
+uv python list
 ```
 
-Ruff should preferably be installed as a project development dependency instead of relying on a global installation.
-
-## 2. Create a New Project
-
-Create a Python project using Python 3.12:
+Install Python 3.15 if the desired release is available through uv:
 
 ```bash
-# Install the Python version managed by uv
-uv python install 3.12
+uv python install 3.15
+```
 
-# Create the project
+Verify the installed interpreter:
+
+```bash
+uv python find 3.15
+uv run --python 3.15 python --version
+```
+
+If Python 3.15 is not yet available for your platform, use a supported interpreter version until the required release becomes available.
+
+## 2. Create a Python 3.15+ Project
+
+Create a project:
+
+```bash
 uv init my-python-app
 cd my-python-app
+```
 
-# Pin the development Python version
-uv python pin 3.12
+Pin Python 3.15 for local development:
 
-# Install development tools
-uv add --dev ruff pytest
+```bash
+uv python pin 3.15
+```
 
-# Synchronize the environment and generate the lockfile
+Configure the project's supported Python range in `pyproject.toml`:
+
+```toml
+[project]
+name = "my-python-app"
+version = "0.1.0"
+requires-python = ">=3.15"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "pytest",
+]
+```
+
+Then synchronize the environment:
+
+```bash
 uv sync
 ```
 
-Typical project structure:
+Alternatively, add development dependencies through uv:
+
+```bash
+uv add --dev ruff pytest
+```
+
+**Important:** `requires-python = ">=3.15"` means Python 3.15 or later. Use this only if the application and its dependencies genuinely support that entire range. If Python 3.15 is the development target but older versions are also supported, declare the actual supported range instead.
+
+### Recommended Project Structure
 
 ```text
 my-python-app/
@@ -72,74 +110,101 @@ my-python-app/
 └── README.md
 ```
 
-The exact structure depends on the project type. Libraries, APIs, and CLI applications may use different layouts.
+Commit `pyproject.toml`, `.python-version`, and `uv.lock` to Git. Do not commit `.venv/`.
 
 ## 3. Essential Daily Commands
 
-### 3.1 Dependency Management
+### 3.1 Python Version Management
 
-| Command | Purpose |
-|---|---|
-| `uv add fastapi` | Add a runtime dependency |
-| `uv add --dev ruff pytest` | Add development dependencies |
-| `uv remove fastapi` | Remove a dependency |
-| `uv sync` | Synchronize the environment |
-| `uv tree` | Display the dependency tree |
-| `uv lock` | Resolve dependencies and update the lockfile when needed |
-| `uv lock --check` | Check lockfile consistency |
-| `uv lock --upgrade` | Upgrade dependencies and update the lockfile |
+```bash
+# Install Python 3.15
+uv python install 3.15
 
-**Best practice:** Manage project dependencies through `uv add` and `uv remove`. Commit `uv.lock` to Git to maintain reproducible dependency resolution.
+# Pin the project interpreter
+uv python pin 3.15
 
-### 3.2 Run Python Code
+# Display available Python versions
+uv python list
+
+# Find the installed interpreter
+uv python find 3.15
+
+# Verify the interpreter used by the project
+uv run python --version
+```
+
+For projects targeting multiple Python versions, validate the supported versions separately in CI.
+
+### 3.2 Dependency Management
+
+```bash
+# Add a runtime dependency
+uv add fastapi
+
+# Add development dependencies
+uv add --dev ruff pytest
+
+# Remove a dependency
+uv remove fastapi
+
+# Synchronize the environment
+uv sync
+
+# Inspect the dependency tree
+uv tree
+
+# Check lockfile consistency
+uv lock --check
+
+# Upgrade dependencies deliberately
+uv lock --upgrade
+```
+
+Before adding a dependency, verify that the selected package version supports Python 3.15.
+
+### 3.3 Run Python Code
 
 ```bash
 # Run a Python script
 uv run python main.py
 
 # Run a Python module
-uv run python -m my_package
+uv run python -m my_python_app
 
 # Run a FastAPI application
 uv run uvicorn app.main:app --reload
 
-# Execute an inline Python command
-uv run python -c "print('Hello, Python!')"
+# Execute an inline command
+uv run python -c "print('Hello, Python 3.15+')"
 ```
 
-Prefer `uv run` for project commands because it executes them in the project's managed environment.
-
-### 3.3 Ruff Linting
+### 3.4 Ruff Linting
 
 ```bash
-# Check the project for linting issues
+# Check the project
 uv run ruff check .
 
-# Automatically fix supported linting issues
+# Fix supported linting issues
 uv run ruff check --fix .
 
-# Display details about a particular rule
+# Display rule documentation
 uv run ruff rule F401
 ```
 
-Use automatic fixes carefully and review the resulting changes before committing.
-
-### 3.4 Ruff Formatting
+### 3.5 Ruff Formatting
 
 ```bash
-# Format Python source files
+# Format Python files
 uv run ruff format .
 
 # Check formatting without modifying files
 uv run ruff format --check .
 
-# Preview formatting differences
+# Preview formatting changes
 uv run ruff format --diff .
 ```
 
-**Rule:** Use `ruff format` to apply formatting and `ruff format --check .` to validate formatting in CI.
-
-### 3.5 Testing with pytest
+### 3.6 Testing with pytest
 
 ```bash
 # Run all tests
@@ -148,25 +213,23 @@ uv run pytest
 # Run a specific test file
 uv run pytest tests/test_main.py
 
-# Run a specific test function
+# Run one test
 uv run pytest tests/test_main.py::test_example
 
-# Run tests with verbose output
+# Verbose test output
 uv run pytest -v
 ```
 
-Linting and formatting do not verify application behavior. Run automated tests separately.
+Check pytest and test-plugin compatibility with Python 3.15, especially when using a prerelease interpreter.
 
 ## 4. Ruff Configuration
 
-Add the following configuration to `pyproject.toml`.
-
-If these sections already exist, merge the settings rather than duplicating TOML tables.
+Add the following configuration to `pyproject.toml`. Merge it with existing sections rather than creating duplicate TOML tables.
 
 ```toml
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py315"
 src = ["src"]
 
 [tool.ruff.lint]
@@ -189,26 +252,26 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 ```
 
+**Compatibility requirement:** Use `target-version = "py315"` only when the installed Ruff version recognizes that target. Upgrade Ruff to a compatible release if necessary. If Ruff does not yet support Python 3.15, use the newest supported target temporarily and avoid enabling syntax-specific rules that assume unsupported language features.
+
 ### Rule Reference
 
 | Rule | Purpose |
 |---|---|
-| `E4`, `E7`, `E9` | Detect selected syntax and code-quality errors |
+| `E4`, `E7`, `E9` | Detect selected code-quality and syntax errors |
 | `F` | Detect undefined names and unused imports |
-| `I` | Enforce consistent import ordering |
+| `I` | Enforce import ordering |
 | `B` | Detect common bug-prone patterns |
 | `UP` | Identify opportunities to modernize Python syntax |
 
-**Important:** `target-version = "py312"` configures Ruff's Python syntax target. It should align with the project's supported Python versions.
-
-For example, use `py310` if Python 3.10 is the minimum supported version.
+Ruff's target version controls the Python syntax and compatibility assumptions used by its checks. It does not install Python or guarantee that third-party dependencies work on Python 3.15.
 
 ## 5. Standard Development Workflow
 
-Run the following sequence from the project root before committing changes:
+Run the following commands from the project root before committing:
 
 ```bash
-# 1. Apply consistent formatting
+# 1. Apply formatting
 uv run ruff format .
 
 # 2. Fix supported linting issues
@@ -223,56 +286,40 @@ uv run ruff check .
 # 5. Run automated tests
 uv run pytest
 
-# 6. Verify lockfile consistency
+# 6. Check lockfile consistency
 uv lock --check
 
-# 7. Review modified files
+# 7. Review changes
 git status
 git diff
 ```
 
-### Recommended Development Sequence
-
-1. Create a feature branch.
-2. Implement the required changes.
-3. Add or update automated tests.
-4. Format the code with Ruff.
-5. Fix linting issues.
-6. Run tests and inspect failures.
-7. Review the source-code and lockfile diffs.
-8. Commit the changes.
-
-Do not automatically fix every issue without reviewing the changes. Avoid suppressing lint rules unless there is a justified reason.
+Review all automatically modified files before committing.
 
 ## 6. CI/CD Validation
 
-Use the following sequence in CI pipelines to enforce reproducible dependencies, linting, formatting, and tests.
+Use the same Python version and dependency lockfile in development and CI.
 
 ```bash
-# Synchronize without allowing lockfile changes
+# Install the locked dependencies without changing uv.lock
 uv sync --locked
 
-# Validate dependency lockfile consistency
+# Validate lockfile consistency
 uv lock --check
 
-# Validate formatting
+# Verify formatting
 uv run --locked ruff format --check .
 
-# Validate linting
+# Verify linting
 uv run --locked ruff check .
 
-# Execute automated tests
+# Run automated tests
 uv run --locked pytest
 ```
 
-### CI/CD Principles
+Configure CI to select Python 3.15 explicitly. If the selected CI image or runner does not provide the required version, install it through an appropriate supported mechanism before running the checks.
 
-- Use the committed `uv.lock` file.
-- Fail the pipeline when linting or formatting checks fail.
-- Fail the pipeline when automated tests fail.
-- Do not automatically rewrite source files during validation.
-- Keep Python and tool versions consistent across development and CI.
-- Require successful checks before merging changes.
+For broader compatibility, test each supported Python version in a separate CI job.
 
 ## 7. Git Practices
 
@@ -285,21 +332,19 @@ uv.lock
 README.md
 ```
 
-Commit application source code, tests, and any other required project configuration as well.
-
 ### Files to Ignore
 
 Add appropriate entries to `.gitignore`:
 
 ```gitignore
-# Python virtual environment
+# Virtual environment
 .venv/
 
 # Python cache
 __pycache__/
 *.py[cod]
 
-# Test cache and coverage
+# Test and coverage cache
 .pytest_cache/
 .coverage
 htmlcov/
@@ -318,53 +363,30 @@ dist/
 *.egg-info/
 ```
 
-Review `.env.example` before committing it to ensure it contains placeholders rather than credentials.
+Never commit API keys, credentials, or production secrets.
 
-### Useful Git Commands
+## 8. Python 3.15+ Compatibility Practices
 
-```bash
-# Check working-tree status
-git status
-
-# Review unstaged changes
-git diff
-
-# Review staged changes
-git diff --cached
-
-# Stage changes
-git add .
-
-# Commit changes
-git commit -m "Add feature or fix"
-
-# Review recent commits
-git log --oneline -5
-```
-
-## 8. Core Development Rules
-
-1. **Isolated environments:** Use one `.venv` per project.
-2. **Dependency management:** Use `uv add` and `uv remove` for declared dependencies.
-3. **Execution:** Prefer `uv run` for project commands.
-4. **Reproducibility:** Commit `uv.lock` and review lockfile changes.
-5. **Formatting:** Use Ruff to maintain consistent formatting.
-6. **Linting:** Fix actionable linting issues instead of suppressing them indiscriminately.
-7. **Testing:** Run automated tests independently of linting.
-8. **Editor configuration:** Configure PyCharm to use the project's `.venv` interpreter.
-9. **CI enforcement:** Apply the same quality checks in CI.
-10. **Security:** Never commit API keys, credentials, or production secrets.
-11. **Dependency updates:** Upgrade dependencies deliberately and review compatibility.
-12. **Maintainability:** Add type checking and dependency security scanning as the project matures.
+1. **Verify interpreter availability:** Confirm that the intended Python 3.15 release is available for your operating system and architecture.
+2. **Check package compatibility:** Review the Python requirements and supported wheels for every important dependency.
+3. **Keep tools current:** Use uv, Ruff, pytest, and compatible plugins that support the selected interpreter.
+4. **Separate target from runtime:** Ruff's `target-version` does not determine which Python executable uv uses.
+5. **Test actual behavior:** Run unit and integration tests under the intended Python version.
+6. **Review native dependencies:** Packages with C or Rust extensions may need compatible wheels or updated build toolchains.
+7. **Keep environments reproducible:** Commit `uv.lock` and use locked synchronization in CI.
+8. **Test supported versions:** If the application supports several Python versions, run a separate test job for each.
+9. **Avoid unverified language features:** Confirm that syntax and standard-library APIs exist in the exact interpreter version you deploy.
+10. **Use staged adoption:** If Python 3.15 support is incomplete in your dependencies, use it for compatibility evaluation before making it the production baseline.
 
 ## 9. Official Documentation
 
 - [uv — Project Guide](https://docs.astral.sh/uv/guides/projects/)
-- [uv — Project Concepts](https://docs.astral.sh/uv/concepts/projects/)
+- [uv — Python Versions](https://docs.astral.sh/uv/guides/install-python/)
 - [uv — Locking and Syncing](https://docs.astral.sh/uv/concepts/projects/sync/)
 - [Ruff — Configuration](https://docs.astral.sh/ruff/configuration/)
 - [Ruff — Linter Rules](https://docs.astral.sh/ruff/rules/)
 - [pytest — Getting Started](https://docs.pytest.org/en/stable/getting-started.html)
+- [Python — What's New](https://docs.python.org/3/whatsnew/)
 
 ---
 
@@ -372,6 +394,8 @@ git log --oneline -5
 
 | Task | Command |
 |---|---|
+| Install Python 3.15 | `uv python install 3.15` |
+| Pin project Python | `uv python pin 3.15` |
 | Add dependency | `uv add package-name` |
 | Add dev dependency | `uv add --dev package-name` |
 | Run Python | `uv run python main.py` |
@@ -382,8 +406,8 @@ git log --oneline -5
 | Run tests | `uv run pytest` |
 | Inspect dependencies | `uv tree` |
 | Check lockfile | `uv lock --check` |
-| Synchronize environment | `uv sync` |
+| Synchronize locked environment | `uv sync --locked` |
 
-**Daily rule: Format → Lint → Test → Review diff → Commit.**
+**Daily rule:** Format → Lint → Test → Review diff → Commit.
 
-Use uv for reproducible environments, Ruff for code quality, pytest for behavior verification, and CI/CD to enforce the same development standards across the team.
+Use uv for environment and dependency reproducibility, Ruff for linting and formatting, pytest for behavior verification, and CI/CD to enforce consistent standards across the team.
